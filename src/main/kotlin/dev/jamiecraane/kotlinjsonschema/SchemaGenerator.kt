@@ -18,6 +18,8 @@ import kotlin.collections.map
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.memberProperties
+import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.jvm.javaField
 import kotlin.reflect.jvm.jvmErasure
 import kotlinx.serialization.Serializable
 
@@ -34,8 +36,11 @@ val <T : Any> KClass<T>.schema: Type.Object
             .filter { !it.returnType.isMarkedNullable }
             .map { it.name }
 
+        val classDescription = this.findAnnotation<Description>()?.value
+            ?: "Generated schema for ${this.simpleName}"
+
         return Type.Object(
-            description = "Generated schema for ${this.simpleName}",
+            description = classDescription,
             properties = properties,
             required = requiredFields,
             additionalProperties = false
@@ -47,13 +52,15 @@ val <T : Any> KClass<T>.schema: Type.Object
  */
 private fun KProperty1<*, *>.toType(): Type {
     val returnType = this.returnType.jvmErasure
-    val description = "Property ${this.name}"
+    val defaultDescription = "Property ${this.name}"
+    val annotatedDescription = this.findAnnotation<Description>()?.value
+        ?: this.javaField?.getAnnotation(Description::class.java)?.value
 
-    return when (returnType) {
-        String::class -> Type.Primitive("string", description)
-        Int::class, Long::class -> Type.Primitive("int", description)
-        Float::class, Double::class -> Type.Primitive("number", description)
-        Boolean::class -> Type.Primitive("boolean", description)
+    val base: Type = when (returnType) {
+        String::class -> Type.Primitive("string", defaultDescription)
+        Int::class, Long::class -> Type.Primitive("int", defaultDescription)
+        Float::class, Double::class -> Type.Primitive("number", defaultDescription)
+        Boolean::class -> Type.Primitive("boolean", defaultDescription)
         List::class -> {
             // Analyze generic type parameters to determine the actual item type
             val itemType = this.returnType.arguments.firstOrNull()?.type?.jvmErasure
@@ -73,7 +80,7 @@ private fun KProperty1<*, *>.toType(): Type {
             }
 
             Type.Array(
-                description = description,
+                description = defaultDescription,
                 items = itemTypeSchema
             )
         }
@@ -83,8 +90,17 @@ private fun KProperty1<*, *>.toType(): Type {
             if (returnType.isData) {
                 returnType.schema
             } else {
-                Type.Primitive("string", description) // fallback
+                Type.Primitive("string", defaultDescription) // fallback
             }
         }
     }
+
+    return if (annotatedDescription != null) {
+        when (base) {
+            is Type.Primitive -> base.copy(description = annotatedDescription)
+            is Type.Array -> base.copy(description = annotatedDescription)
+            is Type.Object -> base.copy(description = annotatedDescription)
+            is Type.Enum -> base.copy(description = annotatedDescription)
+        }
+    } else base
 }
