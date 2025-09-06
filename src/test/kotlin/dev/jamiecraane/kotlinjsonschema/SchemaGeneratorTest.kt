@@ -175,3 +175,45 @@ class SchemaGeneratorTest {
         assertEquals(false, schema.additionalProperties)
     }
 }
+
+
+@Description("Simple class description")
+data class SimpleAnnotated(val id: Int)
+
+@Description("Custom class description")
+data class ClassWithDescription(val value: String)
+
+data class PropertyAnnotated(
+    @Description("User name") val name: String,
+    @Description("Nested override") val nested: SimpleAnnotated,
+    @Description("Tags list") val tags: List<String>
+)
+
+class DescriptionAnnotationTest {
+    @Test
+    fun `class-level description overrides default`() {
+        val schema = ClassWithDescription::class.schema
+        assertEquals("Custom class description", schema.description)
+    }
+
+    @Test
+    fun `property-level description for primitive and array and object`() {
+        val schema = PropertyAnnotated::class.schema
+
+        val nameProp = schema.properties["name"]
+        assertIs<Type.Primitive>(nameProp)
+        assertEquals("User name", nameProp.description)
+
+        val nestedProp = schema.properties["nested"]
+        assertIs<Type.Object>(nestedProp)
+        // Property-level description should override the object's class-level description
+        assertEquals("Nested override", nestedProp.description)
+
+        val tagsProp = schema.properties["tags"]
+        assertIs<Type.Array>(tagsProp)
+        assertEquals("Tags list", tagsProp.description)
+        val itemType = tagsProp.items
+        assertIs<Type.Primitive>(itemType)
+        assertEquals("Array item", itemType.description)
+    }
+}
