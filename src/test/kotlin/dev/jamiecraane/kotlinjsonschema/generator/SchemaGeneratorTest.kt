@@ -1,5 +1,8 @@
-package dev.jamiecraane.kotlinjsonschema
+package dev.jamiecraane.kotlinjsonschema.generator
 
+import dev.jamiecraane.kotlinjsonschema.jsonschema.Description
+import dev.jamiecraane.kotlinjsonschema.jsonschema.Format
+import dev.jamiecraane.kotlinjsonschema.jsonschema.FormatConstants
 import dev.jamiecraane.kotlinjsonschema.jsonschema.Type
 import org.junit.Test
 import kotlin.collections.forEach

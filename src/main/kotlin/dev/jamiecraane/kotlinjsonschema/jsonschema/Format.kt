@@ -1,4 +1,4 @@
-package dev.jamiecraane.kotlinjsonschema
+package dev.jamiecraane.kotlinjsonschema.jsonschema
 
 @Target(AnnotationTarget.PROPERTY, AnnotationTarget.FIELD)
 @Retention(AnnotationRetention.RUNTIME)
