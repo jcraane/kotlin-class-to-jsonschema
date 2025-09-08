@@ -64,7 +64,8 @@ sealed class Type {
     @SerialName("primitive")
     data class Primitive(
         val type: String,
-        override val description: String
+        override val description: String,
+        val format: String? = null
     ) : Type()
 
     @Serializable

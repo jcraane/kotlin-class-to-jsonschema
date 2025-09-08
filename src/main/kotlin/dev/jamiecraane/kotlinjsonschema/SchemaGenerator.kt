@@ -43,12 +43,14 @@ private fun KProperty1<*, *>.toType(): Type {
     val defaultDescription = "Property ${this.name}"
     val annotatedDescription = this.findAnnotation<Description>()?.value
         ?: this.javaField?.getAnnotation(Description::class.java)?.value
+    val format = this.findAnnotation<Format>()?.value
+        ?: this.javaField?.getAnnotation(Format::class.java)?.value
 
     val base: Type = when (returnType) {
-        String::class -> Type.Primitive("string", defaultDescription)
-        Int::class, Long::class -> Type.Primitive("int", defaultDescription)
-        Float::class, Double::class -> Type.Primitive("number", defaultDescription)
-        Boolean::class -> Type.Primitive("boolean", defaultDescription)
+        String::class -> Type.Primitive("string", defaultDescription, format)
+        Int::class, Long::class -> Type.Primitive("int", defaultDescription, format)
+        Float::class, Double::class -> Type.Primitive("number", defaultDescription, format)
+        Boolean::class -> Type.Primitive("boolean", defaultDescription, format)
         List::class -> {
             // Analyze generic type parameters to determine the actual item type
             val itemType = this.returnType.arguments.firstOrNull()?.type?.jvmErasure
@@ -78,7 +80,7 @@ private fun KProperty1<*, *>.toType(): Type {
             if (returnType.isData) {
                 returnType.schema
             } else {
-                Type.Primitive("string", defaultDescription) // fallback
+                Type.Primitive("string", defaultDescription, format) // fallback
             }
         }
     }
@@ -98,6 +100,7 @@ data class Person(
     val name: String,
     val age: Int,
     val addresses: List<Address> = emptyList(),
+    @Format(FormatConstants.DATE)
     val birthData: LocalDate,
 )
 

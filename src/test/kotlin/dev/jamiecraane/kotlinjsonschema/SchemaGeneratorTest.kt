@@ -217,3 +217,87 @@ class DescriptionAnnotationTest {
         assertEquals("Array item", itemType.description)
     }
 }
+
+data class FormatTestClass(
+    @Format(FormatConstants.DATE_TIME) val createdAt: String,
+    @Format(FormatConstants.EMAIL) val email: String,
+    @Format(FormatConstants.UUID) val id: String,
+    @Format("custom-format") val customField: String,
+    val noFormat: String
+)
+
+data class CombinedAnnotationsTest(
+    @Description("User email address") @Format(FormatConstants.EMAIL) val email: String,
+    @Format(FormatConstants.DATE) val birthDate: String
+)
+
+class FormatAnnotationTest {
+    @Test
+    fun `format annotation adds format field to primitive types`() {
+        val schema = FormatTestClass::class.schema
+
+        val createdAtProp = schema.properties["createdAt"]
+        assertIs<Type.Primitive>(createdAtProp)
+        assertEquals("string", createdAtProp.type)
+        assertEquals(FormatConstants.DATE_TIME, createdAtProp.format)
+
+        val emailProp = schema.properties["email"]
+        assertIs<Type.Primitive>(emailProp)
+        assertEquals("string", emailProp.type)
+        assertEquals(FormatConstants.EMAIL, emailProp.format)
+
+        val idProp = schema.properties["id"]
+        assertIs<Type.Primitive>(idProp)
+        assertEquals("string", idProp.type)
+        assertEquals(FormatConstants.UUID, idProp.format)
+    }
+
+    @Test
+    fun `custom format values are preserved`() {
+        val schema = FormatTestClass::class.schema
+
+        val customProp = schema.properties["customField"]
+        assertIs<Type.Primitive>(customProp)
+        assertEquals("string", customProp.type)
+        assertEquals("custom-format", customProp.format)
+    }
+
+    @Test
+    fun `properties without format annotation have null format`() {
+        val schema = FormatTestClass::class.schema
+
+        val noFormatProp = schema.properties["noFormat"]
+        assertIs<Type.Primitive>(noFormatProp)
+        assertEquals("string", noFormatProp.type)
+        assertEquals(null, noFormatProp.format)
+    }
+
+    @Test
+    fun `combined description and format annotations work together`() {
+        val schema = CombinedAnnotationsTest::class.schema
+
+        val emailProp = schema.properties["email"]
+        assertIs<Type.Primitive>(emailProp)
+        assertEquals("string", emailProp.type)
+        assertEquals("User email address", emailProp.description)
+        assertEquals(FormatConstants.EMAIL, emailProp.format)
+
+        val birthDateProp = schema.properties["birthDate"]
+        assertIs<Type.Primitive>(birthDateProp)
+        assertEquals("string", birthDateProp.type)
+        assertEquals("Property birthDate", birthDateProp.description)
+        assertEquals(FormatConstants.DATE, birthDateProp.format)
+    }
+
+    @Test
+    fun `format constants have correct values`() {
+        assertEquals("date-time", FormatConstants.DATE_TIME)
+        assertEquals("date", FormatConstants.DATE)
+        assertEquals("time", FormatConstants.TIME)
+        assertEquals("email", FormatConstants.EMAIL)
+        assertEquals("uuid", FormatConstants.UUID)
+        assertEquals("uri", FormatConstants.URI)
+        assertEquals("ipv4", FormatConstants.IPV4)
+        assertEquals("ipv6", FormatConstants.IPV6)
+    }
+}
