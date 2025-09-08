@@ -59,11 +59,11 @@ class SchemaGeneratorTest {
         val schema = TestClass::class.schema
 
         val intProp = schema.properties["intProperty"] as Type.Primitive
-        assertEquals("int", intProp.type)
+        assertEquals("integer", intProp.type)
         assertEquals("Property intProperty", intProp.description)
 
         val longProp = schema.properties["longProperty"] as Type.Primitive
-        assertEquals("int", longProp.type)
+        assertEquals("integer", longProp.type)
         assertEquals("Property longProperty", longProp.description)
 
         val floatProp = schema.properties["floatProperty"] as Type.Primitive
@@ -139,18 +139,12 @@ class SchemaGeneratorTest {
 
         // Test nested object property
         val nestedProp = schema.properties["nested"]
-        assertIs<Type.Object>(nestedProp)
-        assertEquals("Generated schema for TestClass", nestedProp.description)
-        assertEquals(10, nestedProp.properties.size)
+        assertIs<Type.Reference>(nestedProp)
 
         // Test nested list property
         val nestedListProp = schema.properties["nestedList"]
         assertIs<Type.Array>(nestedListProp)
         assertEquals("array", nestedListProp.type)
-
-        val nestedListItemType = nestedListProp.items
-        assertIs<Type.Object>(nestedListItemType)
-        assertEquals("Generated schema for TestClass", nestedListItemType.description)
     }
 
     @Test

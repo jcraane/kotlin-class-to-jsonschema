@@ -26,7 +26,7 @@ val <T : Any> KClass<T>.schema: JsonSchema
         val rootSchema = this.toObjectSchemaWithReuse(definitions, typeUsageCount)
 
         return JsonSchema(
-            description = "Generated schema for ${rootSchema.description}",
+            description = rootSchema.description,
             definitions = definitions,
             type = "object",
             properties = rootSchema.properties,
@@ -184,7 +184,7 @@ data class Person(
     val age: Int,
     val addresses: List<Address> = emptyList(),
     @Format(FormatConstants.DATE)
-    val birthData: LocalDate,
+    val birthDate: LocalDate,
     val postAddress: Address,
 )
 

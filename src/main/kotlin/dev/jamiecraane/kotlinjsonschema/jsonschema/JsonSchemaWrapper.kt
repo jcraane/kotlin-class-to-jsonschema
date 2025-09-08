@@ -16,6 +16,7 @@ private val jsonSchemaJson = Json {
 
 @Serializable
 data class JsonSchema(
+    @SerialName("\$schema")
     val schema: String = "http://json-schema.org/draft-07/schema#",
     val description: String? = null,
     val type: String = "object",
