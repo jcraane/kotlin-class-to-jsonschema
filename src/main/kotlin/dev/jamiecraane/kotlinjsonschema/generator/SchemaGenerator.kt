@@ -126,17 +126,11 @@ private fun KProperty1<*, *>.toTypeWithReuse(
                 else -> {
                     if (itemType?.isData == true) {
                         val typeName = itemType.simpleName!!
-                        val usageCount = typeUsageCount[typeName] ?: 0
-                        if (usageCount > 1) {
-                            // Create reference for reused types
-                            if (!definitions.containsKey(typeName)) {
-                                definitions[typeName] = itemType.toObjectSchemaWithReuse(definitions, typeUsageCount)
-                            }
-                            Type.Reference("Array item", "#/definitions/$typeName")
-                        } else {
-                            // Inline for single-use types
-                            itemType.toObjectSchemaWithReuse(definitions, typeUsageCount)
+                        // Always create definitions for data classes
+                        if (!definitions.containsKey(typeName)) {
+                            definitions[typeName] = itemType.toObjectSchemaWithReuse(definitions, typeUsageCount)
                         }
+                        Type.Reference("Array item", "#/definitions/$typeName")
                     } else {
                         Type.Primitive("string", "Array item") // fallback
                     }
@@ -152,17 +146,11 @@ private fun KProperty1<*, *>.toTypeWithReuse(
         else -> {
             if (returnType.isData) {
                 val typeName = returnType.simpleName!!
-                val usageCount = typeUsageCount[typeName] ?: 0
-                if (usageCount > 1) {
-                    // Create reference for reused types
-                    if (!definitions.containsKey(typeName)) {
-                        definitions[typeName] = returnType.toObjectSchemaWithReuse(definitions, typeUsageCount)
-                    }
-                    Type.Reference(defaultDescription, "#/definitions/$typeName")
-                } else {
-                    // Inline for single-use types
-                    returnType.toObjectSchemaWithReuse(definitions, typeUsageCount)
+                // Always create definitions for data classes
+                if (!definitions.containsKey(typeName)) {
+                    definitions[typeName] = returnType.toObjectSchemaWithReuse(definitions, typeUsageCount)
                 }
+                Type.Reference(defaultDescription, "#/definitions/$typeName")
             } else {
                 Type.Primitive("string", defaultDescription, format) // fallback
             }

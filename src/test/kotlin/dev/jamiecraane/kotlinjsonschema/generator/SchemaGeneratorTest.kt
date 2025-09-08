@@ -230,9 +230,12 @@ class DescriptionAnnotationTest {
         assertEquals("User name", nameProp.description)
 
         val nestedProp = schema.properties["nested"]
-        assertIs<Type.Object>(nestedProp)
+        assertIs<Type.Reference>(nestedProp)
         // Property-level description should override the object's class-level description
         assertEquals("Nested override", nestedProp.description)
+
+        // Verify the definition was created
+        assertTrue(schema.definitions?.containsKey("SimpleAnnotated") == true)
 
         val tagsProp = schema.properties["tags"]
         assertIs<Type.Array>(tagsProp)
