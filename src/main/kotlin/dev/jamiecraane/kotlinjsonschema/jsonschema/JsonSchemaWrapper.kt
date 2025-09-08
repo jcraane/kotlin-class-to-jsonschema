@@ -11,6 +11,7 @@ private val jsonSchemaJson = Json {
     ignoreUnknownKeys = true
     isLenient = true
     prettyPrint = true
+    explicitNulls = false
     classDiscriminatorMode = ClassDiscriminatorMode.NONE
 }
 
