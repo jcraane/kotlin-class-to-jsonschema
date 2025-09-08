@@ -30,29 +30,6 @@ data class JsonSchema(
 fun JsonSchema.toJsonSchemaString(): String = jsonSchemaJson.encodeToString(JsonSchema.serializer(), this)
 
 @Serializable
-sealed class JsonType {
-    @Serializable
-    @SerialName("string")
-    data object StringType : JsonType()
-
-    @Serializable
-    @SerialName("number")
-    data object NumberType : JsonType()
-
-    @Serializable
-    @SerialName("boolean")
-    data object BooleanType : JsonType()
-
-    @Serializable
-    @SerialName("object")
-    data object ObjectTypeValue : JsonType()
-
-    @Serializable
-    @SerialName("array")
-    data object ArrayType : JsonType()
-}
-
-@Serializable
 sealed class Type {
     abstract val description: String
 
