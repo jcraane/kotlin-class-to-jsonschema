@@ -102,6 +102,7 @@ data class Person(
     val addresses: List<Address> = emptyList(),
     @Format(FormatConstants.DATE)
     val birthData: LocalDate,
+    val postAddress: Address,
 )
 
 data class Address(
