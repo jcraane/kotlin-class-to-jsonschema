@@ -174,6 +174,34 @@ class SchemaGeneratorTest {
         assertEquals(1, schema.properties.size) // Unit property
         assertEquals(false, schema.additionalProperties)
     }
+
+    @Test
+    fun `test complex types generate definitions with references`() {
+        data class Address(val street: String, val city: String)
+        data class Person(val name: String, val address: Address, val addresses: List<Address>)
+
+        val schema = Person::class.schema
+
+        // Verify definitions are created
+        assertEquals(1, schema.definitions?.size)
+        assertTrue(schema.definitions?.containsKey("Address") == true)
+
+        // Verify Address definition structure
+        val addressDef = schema.definitions?.get("Address")
+        assertEquals("Generated schema for Address", addressDef?.description)
+        assertEquals(2, addressDef?.properties?.size)
+
+        // Verify properties use references
+        val addressProperty = schema.properties["address"]
+        assertIs<Type.Reference>(addressProperty)
+        assertEquals("#/definitions/Address", addressProperty.ref)
+
+        val addressesProperty = schema.properties["addresses"]
+        assertIs<Type.Array>(addressesProperty)
+        val arrayItem = addressesProperty.items
+        assertIs<Type.Reference>(arrayItem)
+        assertEquals("#/definitions/Address", arrayItem.ref)
+    }
 }
 
 

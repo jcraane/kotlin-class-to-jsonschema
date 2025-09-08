@@ -14,31 +14,93 @@ import kotlin.reflect.jvm.jvmErasure
 /**
  * Extension property that generates a JsonSchema from a Kotlin data class using reflection
  */
-val <T : Any> KClass<T>.schema: Type.Object
+val <T : Any> KClass<T>.schema: JsonSchema
     get() {
-        val properties = this.memberProperties.associate { property ->
-            property.name to property.toType()
-        }
+        val typeUsageCount = mutableMapOf<String, Int>()
+        val definitions = mutableMapOf<String, Type.Object>()
 
-        val requiredFields = this.memberProperties
-            .filter { !it.returnType.isMarkedNullable }
-            .map { it.name }
+        // First pass: count type usage
+        this.countTypeUsage(typeUsageCount)
 
-        val classDescription = this.findAnnotation<Description>()?.value
-            ?: "Generated schema for ${this.simpleName}"
+        // Second pass: generate schema with definitions only for reused types
+        val rootSchema = this.toObjectSchemaWithReuse(definitions, typeUsageCount)
 
-        return Type.Object(
-            description = classDescription,
-            properties = properties,
-            required = requiredFields,
-            additionalProperties = false
+        return JsonSchema(
+            description = "Generated schema for ${rootSchema.description}",
+            definitions = definitions,
+            type = "object",
+            properties = rootSchema.properties,
+            required = rootSchema.required,
+            additionalProperties = rootSchema.additionalProperties,
         )
     }
 
 /**
- * Converts a KProperty1 to a Type based on its return type
+ * Counts usage of complex types to determine which should become definitions
  */
-private fun KProperty1<*, *>.toType(): Type {
+private fun <T : Any> KClass<T>.countTypeUsage(typeUsageCount: MutableMap<String, Int>) {
+    this.memberProperties.forEach { property ->
+        property.countPropertyTypeUsage(typeUsageCount)
+    }
+}
+
+/**
+ * Counts type usage for a property, including nested types
+ */
+private fun KProperty1<*, *>.countPropertyTypeUsage(typeUsageCount: MutableMap<String, Int>) {
+    val returnType = this.returnType.jvmErasure
+    when (returnType) {
+        List::class -> {
+            val itemType = this.returnType.arguments.firstOrNull()?.type?.jvmErasure
+            if (itemType?.isData == true) {
+                val typeName = itemType.simpleName!!
+                typeUsageCount[typeName] = (typeUsageCount[typeName] ?: 0) + 1
+                itemType.countTypeUsage(typeUsageCount)
+            }
+        }
+        else -> {
+            if (returnType.isData) {
+                val typeName = returnType.simpleName!!
+                typeUsageCount[typeName] = (typeUsageCount[typeName] ?: 0) + 1
+                returnType.countTypeUsage(typeUsageCount)
+            }
+        }
+    }
+}
+
+/**
+ * Converts a KClass to a Type.Object schema with reuse-based definitions
+ */
+private fun <T : Any> KClass<T>.toObjectSchemaWithReuse(
+    definitions: MutableMap<String, Type.Object>,
+    typeUsageCount: Map<String, Int>
+): Type.Object {
+    val properties = this.memberProperties.associate { property ->
+        property.name to property.toTypeWithReuse(definitions, typeUsageCount)
+    }
+
+    val requiredFields = this.memberProperties
+        .filter { !it.returnType.isMarkedNullable }
+        .map { it.name }
+
+    val classDescription = this.findAnnotation<Description>()?.value
+        ?: "Generated schema for ${this.simpleName}"
+
+    return Type.Object(
+        description = classDescription,
+        properties = properties,
+        required = requiredFields,
+        additionalProperties = false
+    )
+}
+
+/**
+ * Converts a KProperty1 to a Type with reuse-based definitions
+ */
+private fun KProperty1<*, *>.toTypeWithReuse(
+    definitions: MutableMap<String, Type.Object>,
+    typeUsageCount: Map<String, Int>
+): Type {
     val returnType = this.returnType.jvmErasure
     val defaultDescription = "Property ${this.name}"
     val annotatedDescription = this.findAnnotation<Description>()?.value
@@ -48,21 +110,30 @@ private fun KProperty1<*, *>.toType(): Type {
 
     val base: Type = when (returnType) {
         String::class -> Type.Primitive("string", defaultDescription, format)
-        Int::class, Long::class -> Type.Primitive("int", defaultDescription, format)
+        Int::class, Long::class -> Type.Primitive("integer", defaultDescription, format)
         Float::class, Double::class -> Type.Primitive("number", defaultDescription, format)
         Boolean::class -> Type.Primitive("boolean", defaultDescription, format)
         List::class -> {
-            // Analyze generic type parameters to determine the actual item type
             val itemType = this.returnType.arguments.firstOrNull()?.type?.jvmErasure
             val itemTypeSchema = when (itemType) {
                 String::class -> Type.Primitive("string", "Array item")
-                Int::class, Long::class -> Type.Primitive("int", "Array item")
+                Int::class, Long::class -> Type.Primitive("integer", "Array item")
                 Float::class, Double::class -> Type.Primitive("number", "Array item")
                 Boolean::class -> Type.Primitive("boolean", "Array item")
                 else -> {
-                    // For complex types like data classes, recursively generate their schema
                     if (itemType?.isData == true) {
-                        itemType.schema
+                        val typeName = itemType.simpleName!!
+                        val usageCount = typeUsageCount[typeName] ?: 0
+                        if (usageCount > 1) {
+                            // Create reference for reused types
+                            if (!definitions.containsKey(typeName)) {
+                                definitions[typeName] = itemType.toObjectSchemaWithReuse(definitions, typeUsageCount)
+                            }
+                            Type.Reference("Array item", "#/definitions/$typeName")
+                        } else {
+                            // Inline for single-use types
+                            itemType.toObjectSchemaWithReuse(definitions, typeUsageCount)
+                        }
                     } else {
                         Type.Primitive("string", "Array item") // fallback
                     }
@@ -76,9 +147,19 @@ private fun KProperty1<*, *>.toType(): Type {
         }
 
         else -> {
-            // For complex types, recursively generate object schema
             if (returnType.isData) {
-                returnType.schema
+                val typeName = returnType.simpleName!!
+                val usageCount = typeUsageCount[typeName] ?: 0
+                if (usageCount > 1) {
+                    // Create reference for reused types
+                    if (!definitions.containsKey(typeName)) {
+                        definitions[typeName] = returnType.toObjectSchemaWithReuse(definitions, typeUsageCount)
+                    }
+                    Type.Reference(defaultDescription, "#/definitions/$typeName")
+                } else {
+                    // Inline for single-use types
+                    returnType.toObjectSchemaWithReuse(definitions, typeUsageCount)
+                }
             } else {
                 Type.Primitive("string", defaultDescription, format) // fallback
             }
@@ -91,9 +172,11 @@ private fun KProperty1<*, *>.toType(): Type {
             is Type.Array -> base.copy(description = annotatedDescription)
             is Type.Object -> base.copy(description = annotatedDescription)
             is Type.Enum -> base.copy(description = annotatedDescription)
+            is Type.Reference -> base.copy(description = annotatedDescription)
         }
     } else base
 }
+
 
 data class Person(
     @Description("The fullname of the user")
@@ -113,6 +196,6 @@ data class Address(
 
 fun main() {
     val personSchema = Person::class.schema
-    println(JsonSchema(name = "test", description = "Person schema", schema = personSchema, strict = true).toJsonSchemaString())
+    println(personSchema.toJsonSchemaString())
 }
 

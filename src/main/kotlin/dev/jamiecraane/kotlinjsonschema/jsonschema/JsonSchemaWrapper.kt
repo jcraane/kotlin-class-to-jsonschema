@@ -15,20 +15,14 @@ private val jsonSchemaJson = Json {
 }
 
 @Serializable
-data class JsonSchemaWrapper(
-    val type: String = "json_schema",
-    @SerialName("json_schema")
-    val jsonSchema: JsonSchema,
-)
-
-fun JsonSchemaWrapper.toJsonSchemaString(): String = jsonSchemaJson.encodeToString(JsonSchemaWrapper.serializer(), this)
-
-@Serializable
 data class JsonSchema(
-    val name: String,
+    val schema: String = "http://json-schema.org/draft-07/schema#",
     val description: String? = null,
-    val schema: Type.Object,
-    val strict: Boolean,
+    val type: String = "object",
+    val properties: Map<String, Type>,
+    val required: List<String> = emptyList(),
+    val additionalProperties: Boolean = false,
+    val definitions: Map<String, Type.Object>? = null,
 )
 
 fun JsonSchema.toJsonSchemaString(): String = jsonSchemaJson.encodeToString(JsonSchema.serializer(), this)
@@ -65,7 +59,7 @@ sealed class Type {
     data class Primitive(
         val type: String,
         override val description: String,
-        val format: String? = null
+        val format: String? = null,
     ) : Type()
 
     @Serializable
@@ -73,7 +67,7 @@ sealed class Type {
     data class Enum(
         override val description: String,
         val type: String = "string",
-        val enum: List<String>
+        val enum: List<String>,
     ) : Type()
 
     @Serializable
@@ -81,7 +75,15 @@ sealed class Type {
     data class Array(
         override val description: String,
         val type: String = "array",
-        val items: Type
+        val items: Type,
+    ) : Type()
+
+    @Serializable
+    @SerialName("reference")
+    data class Reference(
+        override val description: String,
+        @SerialName("\$ref")
+        val ref: String,
     ) : Type()
 
     @Serializable
@@ -91,6 +93,6 @@ sealed class Type {
         val type: String = "object",
         val properties: Map<String, Type>,
         val required: List<String> = emptyList(),
-        val additionalProperties: Boolean = false
+        val additionalProperties: Boolean = false,
     ) : Type()
 }
