@@ -4,24 +4,12 @@ import dev.jamiecraane.kotlinjsonschema.jsonschema.JsonSchema
 import dev.jamiecraane.kotlinjsonschema.jsonschema.Type
 import dev.jamiecraane.kotlinjsonschema.jsonschema.toJsonSchemaString
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
-import kotlin.Any
-import kotlin.Boolean
-import kotlin.Double
-import kotlin.Float
-import kotlin.Int
-import kotlin.Long
-import kotlin.String
-import kotlin.collections.associate
-import kotlin.collections.filter
-import kotlin.collections.map
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.jvm.javaField
 import kotlin.reflect.jvm.jvmErasure
-import kotlinx.serialization.Serializable
 
 /**
  * Extension property that generates a JsonSchema from a Kotlin data class using reflection
@@ -104,3 +92,23 @@ private fun KProperty1<*, *>.toType(): Type {
         }
     } else base
 }
+
+data class Person(
+    @Description("The fullname of the user")
+    val name: String,
+    val age: Int,
+    val addresses: List<Address> = emptyList(),
+    val birthData: LocalDate,
+)
+
+data class Address(
+    val street: String,
+    val city: String,
+    val zip: String,
+)
+
+fun main() {
+    val personSchema = Person::class.schema
+    println(JsonSchema(name = "test", description = "Person schema", schema = personSchema, strict = true).toJsonSchemaString())
+}
+
