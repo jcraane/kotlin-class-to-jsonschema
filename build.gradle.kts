@@ -13,6 +13,10 @@ repositories {
 dependencies {
     implementation(libs.logback)
     implementation(libs.kotlin.reflect)
+    implementation(libs.kotlin.logging)
+    implementation(libs.kotlinpoet)
+    implementation(libs.jackson.module.kotlin)
+    implementation(libs.json.schema.validator)
     implementation(libs.kotlinx.datetime)
     implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.bundles.testing)

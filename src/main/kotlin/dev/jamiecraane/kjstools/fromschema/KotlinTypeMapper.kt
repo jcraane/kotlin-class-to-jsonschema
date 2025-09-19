@@ -1,0 +1,212 @@
+package dev.jamiecraane.kjstools.fromschema
+
+import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import java.math.BigDecimal
+
+/**
+ * Maps JSON Schema types to Kotlin types for code generation.
+ */
+class KotlinTypeMapper {
+
+    data class KotlinPropertyInfo(
+        val name: String,
+        val type: TypeName,
+        val nullable: Boolean,
+        val defaultValue: String?,
+        val description: String?,
+        val jsonPropertyName: String
+    )
+
+    data class KotlinEnumInfo(
+        val name: String,
+        val values: List<String>,
+        val description: String?
+    )
+
+    fun mapProperty(property: JsonSchemaParser.PropertyInfo, parentClassName: String = "", definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap(), mainClassName: String = ""): KotlinPropertyInfo {
+        val kotlinType = mapType(property.type, property.nullable, property.name, parentClassName, definitions, mainClassName)
+
+        // Only provide defaults for non-required fields or nullable fields
+        val defaultValue = if (property.required && !property.nullable) {
+            null // No default for required non-nullable fields
+        } else {
+            generateDefaultValue(kotlinType, property.nullable, property.required)
+        }
+
+        // If we're using null as default, make sure the type is nullable
+        val finalType = if (defaultValue == "null" && !property.nullable) {
+            kotlinType.copy(nullable = true)
+        } else {
+            kotlinType
+        }
+        val finalNullable = defaultValue == "null" || property.nullable
+
+        return KotlinPropertyInfo(
+            name = sanitizePropertyName(property.name),
+            type = finalType,
+            nullable = finalNullable,
+            defaultValue = defaultValue,
+            description = property.description,
+            jsonPropertyName = property.name
+        )
+    }
+
+    fun mapEnum(property: JsonSchemaParser.PropertyInfo): KotlinEnumInfo? {
+        return when (property.type) {
+            is JsonSchemaParser.PropertyType.Enum -> KotlinEnumInfo(
+                name = toPascalCase(property.name) + "Enum", // Add suffix to avoid name conflicts
+                values = property.type.values,
+                description = property.description
+            )
+            else -> null
+        }
+    }
+
+    private fun mapType(type: JsonSchemaParser.PropertyType, nullable: Boolean, propertyName: String = "", parentClassName: String = "", definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap(), mainClassName: String = ""): TypeName {
+        val baseType = when (type) {
+            is JsonSchemaParser.PropertyType.StringType -> String::class.asTypeName()
+            is JsonSchemaParser.PropertyType.Number -> BigDecimal::class.asTypeName()
+            is JsonSchemaParser.PropertyType.Integer -> Long::class.asTypeName()
+            is JsonSchemaParser.PropertyType.Boolean -> Boolean::class.asTypeName()
+            is JsonSchemaParser.PropertyType.Array -> LIST.parameterizedBy(ClassName("kotlin", "Any"))
+            is JsonSchemaParser.PropertyType.Object -> ClassName("kotlin", "Any")
+            is JsonSchemaParser.PropertyType.NestedObject -> {
+                // Reference nested class within the parent class
+                val baseNestedClassName = toPascalCase(propertyName).replaceFirstChar { it.uppercase() }
+                val nestedClassName = if (baseNestedClassName == parentClassName.substringAfterLast('.')) {
+                    "${baseNestedClassName}Child"
+                } else {
+                    baseNestedClassName
+                }
+                ClassName(parentClassName, nestedClassName)
+            }
+            is JsonSchemaParser.PropertyType.Null -> Unit::class.asTypeName()
+            is JsonSchemaParser.PropertyType.Reference -> {
+                // Try to resolve the reference to a concrete type
+                val referencedDefinition = definitions[type.ref]
+                if (referencedDefinition != null) {
+                    // Always use main class for definition references, not child classes
+                    val targetClassName = if (mainClassName.isNotEmpty()) mainClassName else parentClassName
+                    val baseNestedClassName = sanitizeClassName(type.ref).replaceFirstChar { it.uppercase() }
+                    val nestedClassName = if (baseNestedClassName == targetClassName.substringAfterLast('.')) {
+                        "${baseNestedClassName}Child"
+                    } else {
+                        baseNestedClassName
+                    }
+                    ClassName(targetClassName, nestedClassName)
+                } else {
+                    // Fallback to Any if reference can't be resolved
+                    ClassName("kotlin", "Any")
+                }
+            }
+            is JsonSchemaParser.PropertyType.Union -> mapUnionType(type, definitions, mainClassName)
+            is JsonSchemaParser.PropertyType.Enum -> String::class.asTypeName() // Enum values stored as strings by default
+        }
+        return if (nullable) baseType.copy(nullable = true) else baseType
+    }
+
+    fun mapArrayType(property: JsonSchemaParser.PropertyInfo, definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap(), mainClassName: String = ""): TypeName {
+        val itemType = when (val items = property.items) {
+            null -> ClassName("kotlin", "Any")
+            else -> mapType(items.type, items.nullable, items.name, mainClassName, definitions, mainClassName)
+        }
+        return LIST.parameterizedBy(itemType)
+    }
+
+    private fun mapUnionType(union: JsonSchemaParser.PropertyType.Union, definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap(), mainClassName: String = ""): TypeName {
+        val nonNullTypes = union.types.filter { it !is JsonSchemaParser.PropertyType.Null }
+        val itemType = if (nonNullTypes.size == 1) {
+            mapType(nonNullTypes.first(), false, parentClassName = mainClassName, definitions = definitions, mainClassName = mainClassName)
+        } else {
+            ClassName("kotlin", "Any")
+        }
+        return LIST.parameterizedBy(itemType)
+    }
+
+    private fun generateDefaultValue(type: TypeName, nullable: Boolean, required: Boolean = true): String? {
+        return when {
+            nullable -> "null"
+            type.toString().startsWith("kotlin.collections.List") -> "emptyList()" // Lists always default to emptyList()
+            type.toString().startsWith("kotlin.collections.Map") -> "emptyMap()" // Maps always default to emptyMap()
+            !required -> "null" // Other non-required fields default to null (type will be made nullable)
+            type == String::class.asTypeName() -> "\"\"" // Default empty string for required strings
+            type == Long::class.asTypeName() -> "0L" // Default 0L for required longs
+            type == BigDecimal::class.asTypeName() -> "BigDecimal.ZERO" // Default BigDecimal.ZERO for required decimals
+            type == Boolean::class.asTypeName() -> "false" // Default false for required booleans
+            type.toString().contains("kotlin.Any") && !type.toString().startsWith("kotlin.collections.") -> "null" // Any type (not collections) will be made nullable
+            else -> "null"
+        }
+    }
+
+    fun sanitizePropertyName(name: String): String {
+        // Convert to camelCase and ensure it's a valid Kotlin identifier
+        val camelCase = toCamelCase(name)
+
+        return when {
+            isKotlinKeyword(camelCase) -> "`$camelCase`"
+            camelCase.isEmpty() -> "property"
+            !camelCase.first().isLetter() && camelCase.first() != '_' -> "_$camelCase"
+            else -> camelCase
+        }
+    }
+
+    fun sanitizeClassName(name: String): String {
+        val pascalCase = toPascalCase(name)
+
+        return when {
+            isKotlinKeyword(pascalCase) -> "${pascalCase}Class"
+            pascalCase.isEmpty() -> "GeneratedClass"
+            !pascalCase.first().isLetter() -> "Class$pascalCase"
+            else -> pascalCase
+        }
+    }
+
+    private fun toCamelCase(input: String): String {
+        if (input.isEmpty()) return input
+
+        val words = input.split(Regex("[^a-zA-Z0-9]+"))
+            .filter { it.isNotEmpty() }
+
+        if (words.isEmpty()) return "property"
+
+        return words.first().lowercase() + words.drop(1).joinToString("") { word ->
+            word.lowercase().replaceFirstChar { it.titlecase() }
+        }
+    }
+
+    private fun toPascalCase(input: String): String {
+        if (input.isEmpty()) return input
+
+        val words = input.split(Regex("[^a-zA-Z0-9]+"))
+            .filter { it.isNotEmpty() }
+
+        if (words.isEmpty()) return "GeneratedClass"
+
+        return words.joinToString("") { word ->
+            word.lowercase().replaceFirstChar { it.titlecase() }
+        }
+    }
+
+    private fun isKotlinKeyword(name: String): Boolean {
+        return KOTLIN_KEYWORDS.contains(name)
+    }
+
+    companion object {
+        val LIST = ClassName("kotlin.collections", "List")
+        val MAP = ClassName("kotlin.collections", "Map")
+
+        private val KOTLIN_KEYWORDS = setOf(
+            "as", "break", "class", "continue", "do", "else", "false", "for", "fun", "if",
+            "in", "interface", "is", "null", "object", "package", "return", "super", "this",
+            "throw", "true", "try", "typealias", "typeof", "val", "var", "when", "while",
+            "by", "catch", "constructor", "delegate", "dynamic", "field", "file", "finally",
+            "get", "import", "init", "param", "property", "receiver", "set", "setparam",
+            "where", "actual", "abstract", "annotation", "companion", "const", "crossinline",
+            "data", "enum", "expect", "external", "final", "infix", "inline", "inner",
+            "internal", "lateinit", "noinline", "open", "operator", "out", "override",
+            "private", "protected", "public", "reified", "sealed", "suspend", "tailrec", "vararg"
+        )
+    }
+}
+
