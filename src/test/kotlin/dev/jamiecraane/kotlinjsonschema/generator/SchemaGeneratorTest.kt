@@ -1,9 +1,10 @@
 package dev.jamiecraane.kotlinjsonschema.generator
 
-import dev.jamiecraane.kotlinjsonschema.jsonschema.Description
-import dev.jamiecraane.kotlinjsonschema.jsonschema.Format
-import dev.jamiecraane.kotlinjsonschema.jsonschema.FormatConstants
-import dev.jamiecraane.kotlinjsonschema.jsonschema.Type
+import dev.jamiecraane.kjstools.generator.schema
+import dev.jamiecraane.kjstools.jsonschema.Description
+import dev.jamiecraane.kjstools.jsonschema.Format
+import dev.jamiecraane.kjstools.jsonschema.FormatConstants
+import dev.jamiecraane.kjstools.jsonschema.Type
 import org.junit.Test
 import kotlin.collections.forEach
 import kotlin.test.assertEquals

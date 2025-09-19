@@ -1,4 +1,4 @@
-package dev.jamiecraane.kotlinjsonschema.jsonschema
+package dev.jamiecraane.kjstools.jsonschema
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

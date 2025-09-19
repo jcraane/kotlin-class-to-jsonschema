@@ -1,11 +1,11 @@
-package dev.jamiecraane.kotlinjsonschema.generator
+package dev.jamiecraane.kjstools.generator
 
-import dev.jamiecraane.kotlinjsonschema.jsonschema.Description
-import dev.jamiecraane.kotlinjsonschema.jsonschema.Format
-import dev.jamiecraane.kotlinjsonschema.jsonschema.FormatConstants
-import dev.jamiecraane.kotlinjsonschema.jsonschema.JsonSchema
-import dev.jamiecraane.kotlinjsonschema.jsonschema.Type
-import dev.jamiecraane.kotlinjsonschema.jsonschema.toJsonSchemaString
+import dev.jamiecraane.kjstools.jsonschema.Description
+import dev.jamiecraane.kjstools.jsonschema.Format
+import dev.jamiecraane.kjstools.jsonschema.FormatConstants
+import dev.jamiecraane.kjstools.jsonschema.JsonSchema
+import dev.jamiecraane.kjstools.jsonschema.Type
+import dev.jamiecraane.kjstools.jsonschema.toJsonSchemaString
 import kotlinx.datetime.LocalDate
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
