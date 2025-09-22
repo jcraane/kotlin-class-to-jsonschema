@@ -27,7 +27,7 @@ class KotlinTypeMapper(
     )
 
     fun mapProperty(property: JsonSchemaParser.PropertyInfo, parentClassName: String = "", definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap(), mainClassName: String = ""): KotlinPropertyInfo {
-        val kotlinType = mapType(property.type, property.nullable, property.name, parentClassName, definitions, mainClassName)
+        val kotlinType = mapType(property.type, property.nullable, property.name, parentClassName, definitions, mainClassName, property.format)
 
         // Only provide defaults for non-required fields or nullable fields
         val defaultValue = if (property.required && !property.nullable) {
@@ -65,9 +65,21 @@ class KotlinTypeMapper(
         }
     }
 
-    private fun mapType(type: JsonSchemaParser.PropertyType, nullable: Boolean, propertyName: String = "", parentClassName: String = "", definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap(), mainClassName: String = ""): TypeName {
+    private fun mapType(type: JsonSchemaParser.PropertyType, nullable: Boolean, propertyName: String = "", parentClassName: String = "", definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap(), mainClassName: String = "", format: String? = null): TypeName {
         val baseType = when (type) {
-            is JsonSchemaParser.PropertyType.StringType -> String::class.asTypeName()
+            is JsonSchemaParser.PropertyType.StringType -> {
+                // Check if format is provided and if we have a mapper for it
+                if (format != null) {
+                    val formatEnum = FormatEnum.values().find { it.code == format }
+                    if (formatEnum != null && formatMappers.containsKey(formatEnum)) {
+                        ClassName.bestGuess(formatMappers[formatEnum]!!)
+                    } else {
+                        String::class.asTypeName()
+                    }
+                } else {
+                    String::class.asTypeName()
+                }
+            }
             is JsonSchemaParser.PropertyType.Number -> BigDecimal::class.asTypeName()
             is JsonSchemaParser.PropertyType.Integer -> Long::class.asTypeName()
             is JsonSchemaParser.PropertyType.Boolean -> Boolean::class.asTypeName()
@@ -111,7 +123,7 @@ class KotlinTypeMapper(
     fun mapArrayType(property: JsonSchemaParser.PropertyInfo, definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap(), mainClassName: String = ""): TypeName {
         val itemType = when (val items = property.items) {
             null -> ClassName("kotlin", "Any")
-            else -> mapType(items.type, items.nullable, items.name, mainClassName, definitions, mainClassName)
+            else -> mapType(items.type, items.nullable, items.name, mainClassName, definitions, mainClassName, null)
         }
         return LIST.parameterizedBy(itemType)
     }
@@ -119,7 +131,7 @@ class KotlinTypeMapper(
     private fun mapUnionType(union: JsonSchemaParser.PropertyType.Union, definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap(), mainClassName: String = ""): TypeName {
         val nonNullTypes = union.types.filter { it !is JsonSchemaParser.PropertyType.Null }
         val itemType = if (nonNullTypes.size == 1) {
-            mapType(nonNullTypes.first(), false, parentClassName = mainClassName, definitions = definitions, mainClassName = mainClassName)
+            mapType(nonNullTypes.first(), false, parentClassName = mainClassName, definitions = definitions, mainClassName = mainClassName, format = null)
         } else {
             ClassName("kotlin", "Any")
         }
@@ -197,6 +209,24 @@ class KotlinTypeMapper(
     companion object {
         val LIST = ClassName("kotlin.collections", "List")
         val MAP = ClassName("kotlin.collections", "Map")
+
+        /**
+         * Default format mappers for common date/time formats
+         */
+        val JAVA_TIME_FORMAT_MAPPERS = mapOf(
+            FormatEnum.DATE to "java.time.LocalDate",
+            FormatEnum.TIME to "java.time.LocalTime",
+            FormatEnum.DATE_TIME to "java.time.LocalDateTime"
+        )
+
+        /**
+         * Creates a KotlinTypeMapper with default format mappers.
+         * Custom mappers can be provided to override defaults.
+         */
+        fun withDefaults(customMappers: Map<FormatEnum, String> = emptyMap()): KotlinTypeMapper {
+            val combinedMappers = JAVA_TIME_FORMAT_MAPPERS + customMappers
+            return KotlinTypeMapper(combinedMappers)
+        }
 
         private val KOTLIN_KEYWORDS = setOf(
             "as", "break", "class", "continue", "do", "else", "false", "for", "fun", "if",

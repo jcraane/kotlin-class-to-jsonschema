@@ -175,4 +175,156 @@ class KotlinTypeMapperTest {
         assertEquals(listOf("ACTIVE", "INACTIVE", "PENDING"), enumInfo?.values)
         assertEquals("A status enum", enumInfo?.description)
     }
+
+    @Test
+    fun `test default format mappers`() {
+        val mapper = KotlinTypeMapper.withDefaults()
+
+        // Test date format
+        val dateProperty = JsonSchemaParser.PropertyInfo(
+            name = "birthDate",
+            type = JsonSchemaParser.PropertyType.StringType,
+            nullable = false,
+            required = true,
+            description = "A date field",
+            format = "date",
+            enumValues = null,
+            items = null
+        )
+
+        val dateResult = mapper.mapProperty(dateProperty)
+        assertEquals("birthdate", dateResult.name)
+        assertEquals("java.time.LocalDate", dateResult.type.toString())
+        assertEquals(false, dateResult.nullable)
+
+        // Test time format
+        val timeProperty = JsonSchemaParser.PropertyInfo(
+            name = "startTime",
+            type = JsonSchemaParser.PropertyType.StringType,
+            nullable = false,
+            required = true,
+            description = "A time field",
+            format = "time",
+            enumValues = null,
+            items = null
+        )
+
+        val timeResult = mapper.mapProperty(timeProperty)
+        assertEquals("starttime", timeResult.name)
+        assertEquals("java.time.LocalTime", timeResult.type.toString())
+        assertEquals(false, timeResult.nullable)
+
+        // Test date-time format
+        val dateTimeProperty = JsonSchemaParser.PropertyInfo(
+            name = "createdAt",
+            type = JsonSchemaParser.PropertyType.StringType,
+            nullable = false,
+            required = true,
+            description = "A date-time field",
+            format = "date-time",
+            enumValues = null,
+            items = null
+        )
+
+        val dateTimeResult = mapper.mapProperty(dateTimeProperty)
+        assertEquals("createdat", dateTimeResult.name)
+        assertEquals("java.time.LocalDateTime", dateTimeResult.type.toString())
+        assertEquals(false, dateTimeResult.nullable)
+    }
+
+    @Test
+    fun `test custom format mappers override defaults`() {
+        val customMappers = mapOf(
+            FormatEnum.DATE to "java.util.Date",
+            FormatEnum.UUID to "java.util.UUID"
+        )
+        val mapper = KotlinTypeMapper.withDefaults(customMappers)
+
+        // Test custom date format mapper overrides default
+        val dateProperty = JsonSchemaParser.PropertyInfo(
+            name = "birthDate",
+            type = JsonSchemaParser.PropertyType.StringType,
+            nullable = false,
+            required = true,
+            description = "A date field",
+            format = "date",
+            enumValues = null,
+            items = null
+        )
+
+        val dateResult = mapper.mapProperty(dateProperty)
+        assertEquals("java.util.Date", dateResult.type.toString())
+
+        // Test custom UUID mapper
+        val uuidProperty = JsonSchemaParser.PropertyInfo(
+            name = "id",
+            type = JsonSchemaParser.PropertyType.StringType,
+            nullable = false,
+            required = true,
+            description = "A UUID field",
+            format = "uuid",
+            enumValues = null,
+            items = null
+        )
+
+        val uuidResult = mapper.mapProperty(uuidProperty)
+        assertEquals("java.util.UUID", uuidResult.type.toString())
+
+        // Test that non-overridden default mappers still work
+        val timeProperty = JsonSchemaParser.PropertyInfo(
+            name = "startTime",
+            type = JsonSchemaParser.PropertyType.StringType,
+            nullable = false,
+            required = true,
+            description = "A time field",
+            format = "time",
+            enumValues = null,
+            items = null
+        )
+
+        val timeResult = mapper.mapProperty(timeProperty)
+        assertEquals("java.time.LocalTime", timeResult.type.toString())
+    }
+
+    @Test
+    fun `test fallback to String for unknown format`() {
+        val mapper = KotlinTypeMapper.withDefaults()
+
+        val unknownFormatProperty = JsonSchemaParser.PropertyInfo(
+            name = "customField",
+            type = JsonSchemaParser.PropertyType.StringType,
+            nullable = false,
+            required = true,
+            description = "A field with unknown format",
+            format = "custom-format",
+            enumValues = null,
+            items = null
+        )
+
+        val result = mapper.mapProperty(unknownFormatProperty)
+        assertEquals("customfield", result.name)
+        assertEquals(String::class.asTypeName(), result.type)
+        assertEquals(false, result.nullable)
+    }
+
+    @Test
+    fun `test String type without format uses default String mapping`() {
+        val mapper = KotlinTypeMapper.withDefaults()
+
+        val stringProperty = JsonSchemaParser.PropertyInfo(
+            name = "description",
+            type = JsonSchemaParser.PropertyType.StringType,
+            nullable = false,
+            required = true,
+            description = "A string field without format",
+            format = null,
+            enumValues = null,
+            items = null
+        )
+
+        val result = mapper.mapProperty(stringProperty)
+        assertEquals("description", result.name)
+        assertEquals(String::class.asTypeName(), result.type)
+        assertEquals(false, result.nullable)
+    }
 }
