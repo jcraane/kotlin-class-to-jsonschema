@@ -39,23 +39,6 @@ class NestedClassGenerator(
         )
     }
 
-    fun generateDefinitionClass(
-        definitionName: String,
-        definition: JsonSchemaParser.DefinitionInfo,
-        definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap(),
-    ): TypeSpec {
-        val className = typeMapper.sanitizeClassName(definitionName).replaceFirstChar { it.uppercase() }
-
-        return generateClassWithProperties(
-            className = className,
-            properties = definition.properties,
-            definitions = definitions,
-            parentContext = "",
-            description = definition.description,
-            includeNestedObjects = false
-        )
-    }
-
     fun generateNestedDataClass(
         definitionName: String,
         definition: JsonSchemaParser.DefinitionInfo,
