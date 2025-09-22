@@ -13,8 +13,10 @@ import com.squareup.kotlinpoet.TypeSpec
 /**
  * Generates Kotlin data classes using KotlinPoet from parsed JSON Schema information.
  */
-class DataClassGenerator() {
-    private val typeMapper: KotlinTypeMapper = KotlinTypeMapper()
+class DataClassGenerator(
+    formatMappers: Map<FormatEnum, String> = emptyMap(),
+) {
+    private val typeMapper: KotlinTypeMapper = KotlinTypeMapper(formatMappers)
 
     fun generateDataClass(
         parsedSchema: JsonSchemaParser.ParsedSchema,

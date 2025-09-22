@@ -7,7 +7,9 @@ import java.math.BigDecimal
 /**
  * Maps JSON Schema types to Kotlin types for code generation.
  */
-class KotlinTypeMapper {
+class KotlinTypeMapper(
+    private val formatMappers: Map<FormatEnum, String>,
+) {
 
     data class KotlinPropertyInfo(
         val name: String,
