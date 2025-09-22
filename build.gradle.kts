@@ -25,4 +25,9 @@ dependencies {
 
 kotlin {
     jvmToolchain(21)
+    sourceSets {
+        main {
+            kotlin.srcDir("src/main/generated")
+        }
+    }
 }

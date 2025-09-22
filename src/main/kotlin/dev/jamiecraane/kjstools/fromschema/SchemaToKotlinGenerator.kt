@@ -17,7 +17,7 @@ class SchemaToKotlinGenerator(
     private val outputDirectory: String,
 ) {
     init {
-        require(packageName.isBlank()) {
+        require(packageName.isNotBlank()) {
             "Package name must be provided"
         }
     }
