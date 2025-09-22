@@ -11,6 +11,8 @@ The DataClassGenerator has multiple generation methods that could be separated:
 - Extract an EnumClassGenerator for enum-specific generation
 - Main class focuses only on the primary data class generation
 
+Take modification of unit tests into account if applicable.
+
 3. Eliminate Code Duplication in DataClassGenerator
 
 Multiple methods contain similar property handling logic:
