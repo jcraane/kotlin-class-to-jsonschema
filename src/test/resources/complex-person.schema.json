@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ComplexPerson",
+  "type": "object",
+  "properties": {
+    "firstname": {
+      "type": "string",
+      "description": "The person's first name"
+    },
+    "lastname": {
+      "type": "string",
+      "description": "The person's last name"
+    },
+    "birthdate": {
+      "type": "string",
+      "format": "date",
+      "description": "The person's birth date"
+    },
+    "livingAddress": {
+      "$ref": "#/definitions/Address",
+      "description": "The person's living address"
+    },
+    "postalAddress": {
+      "$ref": "#/definitions/Address",
+      "description": "The person's postal address"
+    },
+    "courses": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Course"
+      },
+      "description": "List of courses the person attended"
+    }
+  },
+  "required": ["firstname", "lastname", "birthdate"],
+  "definitions": {
+    "Address": {
+      "type": "object",
+      "properties": {
+        "street": {
+          "type": "string",
+          "description": "Street name"
+        },
+        "city": {
+          "type": "string",
+          "description": "City name"
+        },
+        "housenumber": {
+          "type": "string",
+          "description": "House number"
+        },
+        "zipcode": {
+          "type": "string",
+          "description": "Zip code"
+        }
+      },
+      "required": ["street", "city", "housenumber", "zipcode"]
+    },
+    "Course": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Course name"
+        },
+        "datetime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Course date and time"
+        }
+      },
+      "required": ["name", "datetime"]
+    }
+  }
+}
