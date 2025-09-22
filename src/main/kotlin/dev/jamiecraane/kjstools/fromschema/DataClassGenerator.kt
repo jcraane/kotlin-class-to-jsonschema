@@ -57,60 +57,18 @@ class DataClassGenerator(
         className: String,
         parsedSchema: JsonSchemaParser.ParsedSchema,
     ): TypeSpec {
-        val classBuilder = TypeSpec.classBuilder(className)
-            .addModifiers(KModifier.DATA)
-            .addAnnotation(
-                AnnotationSpec.builder(JsonIgnoreProperties::class)
-                    .addMember("ignoreUnknown = false")
-                    .build()
-            )
-
-        // Add class-level KDoc if available
-        parsedSchema.description?.let { description ->
-            classBuilder.addKdoc(description.replace("\"", "\\\""))
-        }
-
-        // Generate primary constructor
-        val constructorBuilder = FunSpec.constructorBuilder()
-
-        parsedSchema.rootProperties.forEach { (_, property) ->
-            val kotlinProperty = when (property.type) {
-                is JsonSchemaParser.PropertyType.Array -> {
-                    val mappedProperty =
-                        typeMapper.mapProperty(property, className, parsedSchema.definitions, className)
-                    val arrayType = typeMapper.mapArrayType(property, parsedSchema.definitions, className)
-                    // If the default value is null, make the array type nullable
-                    val finalArrayType = if (mappedProperty.defaultValue == "null") {
-                        arrayType.copy(nullable = true)
-                    } else {
-                        arrayType
-                    }
-                    mappedProperty.copy(type = finalArrayType)
-                }
-
-                else -> typeMapper.mapProperty(property, className, parsedSchema.definitions, className)
-            }
-
-            addPropertyToClass(classBuilder, constructorBuilder, kotlinProperty)
-        }
-
-        // Add nested classes for nested objects
-        parsedSchema.rootProperties.values.forEach { property ->
-            if (property.type is JsonSchemaParser.PropertyType.NestedObject) {
-                val baseNestedClassName =
-                    typeMapper.sanitizeClassName(property.name).replaceFirstChar { it.uppercase() }
-                val nestedClassName = if (baseNestedClassName == className) {
-                    "${baseNestedClassName}Child"
-                } else {
-                    baseNestedClassName
-                }
-                val nestedClass = nestedClassGenerator.generateNestedObjectClass(nestedClassName, property.type, parsedSchema.definitions)
-                classBuilder.addType(nestedClass)
-            }
-        }
+        val mainClass = nestedClassGenerator.generateClassWithProperties(
+            className = className,
+            properties = parsedSchema.rootProperties,
+            definitions = parsedSchema.definitions,
+            parentContext = className,
+            description = parsedSchema.description,
+            includeNestedObjects = true
+        )
 
         // Add nested classes for definitions (like Subdoel, Activiteit)
         // Only generate classes for complex objects with properties, not simple type definitions
+        val classBuilder = mainClass.toBuilder()
         parsedSchema.definitions.forEach { (defName, definition) ->
             if (definition.properties.isNotEmpty()) {
                 val definitionClass =
@@ -119,43 +77,12 @@ class DataClassGenerator(
             }
         }
 
-        return classBuilder.primaryConstructor(constructorBuilder.build()).build()
+        return classBuilder.build()
     }
 
 
 
 
-    private fun addPropertyToClass(
-        classBuilder: TypeSpec.Builder,
-        constructorBuilder: FunSpec.Builder,
-        kotlinProperty: KotlinTypeMapper.KotlinPropertyInfo,
-    ) {
-        // Add constructor parameter
-        val parameterBuilder = ParameterSpec.builder(kotlinProperty.name, kotlinProperty.type)
-            .addAnnotation(
-                AnnotationSpec.builder(JsonProperty::class)
-                    .addMember("%S", kotlinProperty.jsonPropertyName)
-                    .build()
-            )
-
-        // Add default value if available
-        kotlinProperty.defaultValue?.let { defaultValue ->
-            parameterBuilder.defaultValue(defaultValue)
-        }
-
-        constructorBuilder.addParameter(parameterBuilder.build())
-
-        // Add property to class
-        val propertyBuilder = PropertySpec.builder(kotlinProperty.name, kotlinProperty.type)
-            .initializer(kotlinProperty.name)
-
-        // Add property KDoc if available
-        kotlinProperty.description?.let { description ->
-            propertyBuilder.addKdoc(description.replace("\"", "\\\""))
-        }
-
-        classBuilder.addProperty(propertyBuilder.build())
-    }
 
 
 

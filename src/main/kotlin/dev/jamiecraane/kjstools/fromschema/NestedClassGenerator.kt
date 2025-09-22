@@ -28,58 +28,15 @@ class NestedClassGenerator(
         } else {
             baseClassName
         }
-        val classBuilder = TypeSpec.classBuilder(className)
-            .addModifiers(KModifier.DATA)
-            .addAnnotation(
-                AnnotationSpec.builder(JsonIgnoreProperties::class)
-                    .addMember("ignoreUnknown = false")
-                    .build()
-            )
 
-        // Add class-level KDoc if available
-        definition.description?.let { description ->
-            classBuilder.addKdoc(description.replace("\"", "\\\""))
-        }
-
-        // Generate primary constructor
-        val constructorBuilder = FunSpec.constructorBuilder()
-
-        definition.properties.forEach { (_, property) ->
-            val kotlinProperty = when (property.type) {
-                is JsonSchemaParser.PropertyType.Array -> {
-                    val mappedProperty = typeMapper.mapProperty(property, className, definitions, mainClassName)
-                    val arrayType = typeMapper.mapArrayType(property, definitions, mainClassName)
-                    // If the default value is null, make the array type nullable
-                    val finalArrayType = if (mappedProperty.defaultValue == "null") {
-                        arrayType.copy(nullable = true)
-                    } else {
-                        arrayType
-                    }
-                    mappedProperty.copy(type = finalArrayType)
-                }
-
-                else -> typeMapper.mapProperty(property, className, definitions, mainClassName)
-            }
-
-            addPropertyToClass(classBuilder, constructorBuilder, kotlinProperty)
-        }
-
-        // Add nested classes for nested objects within this definition
-        definition.properties.values.forEach { property ->
-            if (property.type is JsonSchemaParser.PropertyType.NestedObject) {
-                val baseNestedClassName =
-                    typeMapper.sanitizeClassName(property.name).replaceFirstChar { it.uppercase() }
-                val nestedClassName = if (baseNestedClassName == className) {
-                    "${baseNestedClassName}Child"
-                } else {
-                    baseNestedClassName
-                }
-                val nestedClass = generateNestedObjectClass(nestedClassName, property.type, definitions)
-                classBuilder.addType(nestedClass)
-            }
-        }
-
-        return classBuilder.primaryConstructor(constructorBuilder.build()).build()
+        return generateClassWithProperties(
+            className = className,
+            properties = definition.properties,
+            definitions = definitions,
+            parentContext = mainClassName,
+            description = definition.description,
+            includeNestedObjects = true
+        )
     }
 
     fun generateDefinitionClass(
@@ -88,43 +45,15 @@ class NestedClassGenerator(
         definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap(),
     ): TypeSpec {
         val className = typeMapper.sanitizeClassName(definitionName).replaceFirstChar { it.uppercase() }
-        val classBuilder = TypeSpec.classBuilder(className)
-            .addModifiers(KModifier.DATA)
-            .addAnnotation(
-                AnnotationSpec.builder(JsonIgnoreProperties::class)
-                    .addMember("ignoreUnknown = false")
-                    .build()
-            )
 
-        // Add class-level KDoc if available
-        definition.description?.let { description ->
-            classBuilder.addKdoc(description.replace("\"", "\\\""))
-        }
-
-        // Generate primary constructor
-        val constructorBuilder = FunSpec.constructorBuilder()
-
-        definition.properties.forEach { (_, property) ->
-            val kotlinProperty = when (property.type) {
-                is JsonSchemaParser.PropertyType.Array -> {
-                    val mappedProperty = typeMapper.mapProperty(property, className, definitions, "")
-                    val arrayType = typeMapper.mapArrayType(property, definitions, "")
-                    // If the default value is null, make the array type nullable
-                    val finalArrayType = if (mappedProperty.defaultValue == "null") {
-                        arrayType.copy(nullable = true)
-                    } else {
-                        arrayType
-                    }
-                    mappedProperty.copy(type = finalArrayType)
-                }
-
-                else -> typeMapper.mapProperty(property, className, definitions, "")
-            }
-
-            addPropertyToClass(classBuilder, constructorBuilder, kotlinProperty)
-        }
-
-        return classBuilder.primaryConstructor(constructorBuilder.build()).build()
+        return generateClassWithProperties(
+            className = className,
+            properties = definition.properties,
+            definitions = definitions,
+            parentContext = "",
+            description = definition.description,
+            includeNestedObjects = false
+        )
     }
 
     fun generateNestedDataClass(
@@ -134,43 +63,15 @@ class NestedClassGenerator(
         definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap(),
     ): TypeSpec {
         val className = typeMapper.sanitizeClassName(definitionName)
-        val classBuilder = TypeSpec.classBuilder(className)
-            .addModifiers(KModifier.DATA)
-            .addAnnotation(
-                AnnotationSpec.builder(JsonIgnoreProperties::class)
-                    .addMember("ignoreUnknown = false")
-                    .build()
-            )
 
-        // Add class-level KDoc if available
-        definition.description?.let { description ->
-            classBuilder.addKdoc(description.replace("\"", "\\\""))
-        }
-
-        // Generate primary constructor
-        val constructorBuilder = FunSpec.constructorBuilder()
-
-        definition.properties.forEach { (_, property) ->
-            val kotlinProperty = when (property.type) {
-                is JsonSchemaParser.PropertyType.Array -> {
-                    val mappedProperty = typeMapper.mapProperty(property, parentClassName, definitions, "")
-                    val arrayType = typeMapper.mapArrayType(property, definitions, "")
-                    // If the default value is null, make the array type nullable
-                    val finalArrayType = if (mappedProperty.defaultValue == "null") {
-                        arrayType.copy(nullable = true)
-                    } else {
-                        arrayType
-                    }
-                    mappedProperty.copy(type = finalArrayType)
-                }
-
-                else -> typeMapper.mapProperty(property, parentClassName, definitions, "")
-            }
-
-            addPropertyToClass(classBuilder, constructorBuilder, kotlinProperty)
-        }
-
-        return classBuilder.primaryConstructor(constructorBuilder.build()).build()
+        return generateClassWithProperties(
+            className = className,
+            properties = definition.properties,
+            definitions = definitions,
+            parentContext = "",
+            description = definition.description,
+            includeNestedObjects = false
+        )
     }
 
     fun generateNestedObjectClass(
@@ -192,6 +93,74 @@ class NestedClassGenerator(
         nestedObject.properties.forEach { (_, property) ->
             val kotlinProperty = typeMapper.mapProperty(property, className, definitions, "")
             addPropertyToClass(classBuilder, constructorBuilder, kotlinProperty)
+        }
+
+        return classBuilder.primaryConstructor(constructorBuilder.build()).build()
+    }
+
+    /**
+     * Common method to generate a class with properties, eliminating code duplication
+     * across generateMainDataClass, generateDefinitionAsNestedClass, generateDefinitionClass, and generateNestedDataClass
+     */
+    internal fun generateClassWithProperties(
+        className: String,
+        properties: Map<String, JsonSchemaParser.PropertyInfo>,
+        definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap(),
+        parentContext: String = "",
+        description: String? = null,
+        includeNestedObjects: Boolean = true
+    ): TypeSpec {
+        val classBuilder = TypeSpec.classBuilder(className)
+            .addModifiers(KModifier.DATA)
+            .addAnnotation(
+                AnnotationSpec.builder(JsonIgnoreProperties::class)
+                    .addMember("ignoreUnknown = false")
+                    .build()
+            )
+
+        // Add class-level KDoc if available
+        description?.let { desc ->
+            classBuilder.addKdoc(desc.replace("\"", "\\\""))
+        }
+
+        // Generate primary constructor
+        val constructorBuilder = FunSpec.constructorBuilder()
+
+        properties.forEach { (_, property) ->
+            val kotlinProperty = when (property.type) {
+                is JsonSchemaParser.PropertyType.Array -> {
+                    val mappedProperty = typeMapper.mapProperty(property, className, definitions, parentContext)
+                    val arrayType = typeMapper.mapArrayType(property, definitions, parentContext)
+                    // If the default value is null, make the array type nullable
+                    val finalArrayType = if (mappedProperty.defaultValue == "null") {
+                        arrayType.copy(nullable = true)
+                    } else {
+                        arrayType
+                    }
+                    mappedProperty.copy(type = finalArrayType)
+                }
+
+                else -> typeMapper.mapProperty(property, className, definitions, parentContext)
+            }
+
+            addPropertyToClass(classBuilder, constructorBuilder, kotlinProperty)
+        }
+
+        // Add nested classes for nested objects if requested
+        if (includeNestedObjects) {
+            properties.values.forEach { property ->
+                if (property.type is JsonSchemaParser.PropertyType.NestedObject) {
+                    val baseNestedClassName =
+                        typeMapper.sanitizeClassName(property.name).replaceFirstChar { it.uppercase() }
+                    val nestedClassName = if (baseNestedClassName == className) {
+                        "${baseNestedClassName}Child"
+                    } else {
+                        baseNestedClassName
+                    }
+                    val nestedClass = generateNestedObjectClass(nestedClassName, property.type, definitions)
+                    classBuilder.addType(nestedClass)
+                }
+            }
         }
 
         return classBuilder.primaryConstructor(constructorBuilder.build()).build()
