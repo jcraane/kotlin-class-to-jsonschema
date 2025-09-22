@@ -1,8 +1,8 @@
 package dev.jamiecraane.kjstools.generator
 
 import dev.jamiecraane.kjstools.jsonschema.Description
-import dev.jamiecraane.kjstools.jsonschema.Format
-import dev.jamiecraane.kjstools.jsonschema.FormatConstants
+import dev.jamiecraane.kjstools.fromschema.Format
+import dev.jamiecraane.kjstools.fromschema.FormatConstants
 import dev.jamiecraane.kjstools.jsonschema.JsonSchema
 import dev.jamiecraane.kjstools.jsonschema.Type
 import dev.jamiecraane.kjstools.jsonschema.toJsonSchemaString

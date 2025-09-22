@@ -2,8 +2,8 @@ package dev.jamiecraane.kjstools.toschema
 
 import dev.jamiecraane.kjstools.generator.schema
 import dev.jamiecraane.kjstools.jsonschema.Description
-import dev.jamiecraane.kjstools.jsonschema.Format
-import dev.jamiecraane.kjstools.jsonschema.FormatConstants
+import dev.jamiecraane.kjstools.fromschema.Format
+import dev.jamiecraane.kjstools.fromschema.FormatConstants
 import dev.jamiecraane.kjstools.jsonschema.Type
 import org.junit.Test
 import kotlin.collections.forEach
