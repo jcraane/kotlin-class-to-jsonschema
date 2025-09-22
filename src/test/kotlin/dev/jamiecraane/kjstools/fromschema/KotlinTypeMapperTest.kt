@@ -5,7 +5,6 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import org.junit.Test
 import java.math.BigDecimal
 import kotlin.test.assertEquals
-import kotlin.test.assertIs
 
 class KotlinTypeMapperTest {
 
@@ -178,7 +177,7 @@ class KotlinTypeMapperTest {
 
     @Test
     fun `test default format mappers`() {
-        val mapper = KotlinTypeMapper.withDefaults()
+        val mapper = KotlinTypeMapper.withJavaTimeMapping()
 
         // Test date format
         val dateProperty = JsonSchemaParser.PropertyInfo(
@@ -238,7 +237,7 @@ class KotlinTypeMapperTest {
             FormatEnum.DATE to "java.util.Date",
             FormatEnum.UUID to "java.util.UUID"
         )
-        val mapper = KotlinTypeMapper.withDefaults(customMappers)
+        val mapper = KotlinTypeMapper.withJavaTimeMapping(customMappers)
 
         // Test custom date format mapper overrides default
         val dateProperty = JsonSchemaParser.PropertyInfo(
@@ -288,7 +287,7 @@ class KotlinTypeMapperTest {
 
     @Test
     fun `test fallback to String for unknown format`() {
-        val mapper = KotlinTypeMapper.withDefaults()
+        val mapper = KotlinTypeMapper.withJavaTimeMapping()
 
         val unknownFormatProperty = JsonSchemaParser.PropertyInfo(
             name = "customField",
@@ -309,7 +308,7 @@ class KotlinTypeMapperTest {
 
     @Test
     fun `test String type without format uses default String mapping`() {
-        val mapper = KotlinTypeMapper.withDefaults()
+        val mapper = KotlinTypeMapper.withJavaTimeMapping()
 
         val stringProperty = JsonSchemaParser.PropertyInfo(
             name = "description",

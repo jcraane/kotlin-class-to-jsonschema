@@ -223,7 +223,7 @@ class KotlinTypeMapper(
          * Creates a KotlinTypeMapper with default format mappers.
          * Custom mappers can be provided to override defaults.
          */
-        fun withDefaults(customMappers: Map<FormatEnum, String> = emptyMap()): KotlinTypeMapper {
+        fun withJavaTimeMapping(customMappers: Map<FormatEnum, String> = emptyMap()): KotlinTypeMapper {
             val combinedMappers = JAVA_TIME_FORMAT_MAPPERS + customMappers
             return KotlinTypeMapper(combinedMappers)
         }
