@@ -66,58 +66,16 @@ class KotlinTypeMapper(
     }
 
     private fun mapType(type: JsonSchemaParser.PropertyType, nullable: Boolean, propertyName: String = "", parentClassName: String = "", definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap(), mainClassName: String = "", format: String? = null): TypeName {
-        val baseType = when (type) {
-            is JsonSchemaParser.PropertyType.StringType -> {
-                // Check if format is provided and if we have a mapper for it
-                if (format != null) {
-                    val formatEnum = FormatEnum.values().find { it.code == format }
-                    if (formatEnum != null && formatMappers.containsKey(formatEnum)) {
-                        ClassName.bestGuess(formatMappers[formatEnum]!!)
-                    } else {
-                        String::class.asTypeName()
-                    }
-                } else {
-                    String::class.asTypeName()
-                }
-            }
-            is JsonSchemaParser.PropertyType.Number -> BigDecimal::class.asTypeName()
-            is JsonSchemaParser.PropertyType.Integer -> Long::class.asTypeName()
-            is JsonSchemaParser.PropertyType.Boolean -> Boolean::class.asTypeName()
-            is JsonSchemaParser.PropertyType.Array -> LIST.parameterizedBy(ClassName("kotlin", "Any"))
-            is JsonSchemaParser.PropertyType.Object -> ClassName("kotlin", "Any")
-            is JsonSchemaParser.PropertyType.NestedObject -> {
-                // Reference nested class within the parent class
-                val baseNestedClassName = toPascalCase(propertyName).replaceFirstChar { it.uppercase() }
-                val nestedClassName = if (baseNestedClassName == parentClassName.substringAfterLast('.')) {
-                    "${baseNestedClassName}Child"
-                } else {
-                    baseNestedClassName
-                }
-                ClassName(parentClassName, nestedClassName)
-            }
-            is JsonSchemaParser.PropertyType.Null -> Unit::class.asTypeName()
-            is JsonSchemaParser.PropertyType.Reference -> {
-                // Try to resolve the reference to a concrete type
-                val referencedDefinition = definitions[type.ref]
-                if (referencedDefinition != null) {
-                    // Always use main class for definition references, not child classes
-                    val targetClassName = if (mainClassName.isNotEmpty()) mainClassName else parentClassName
-                    val baseNestedClassName = sanitizeClassName(type.ref).replaceFirstChar { it.uppercase() }
-                    val nestedClassName = if (baseNestedClassName == targetClassName.substringAfterLast('.')) {
-                        "${baseNestedClassName}Child"
-                    } else {
-                        baseNestedClassName
-                    }
-                    ClassName(targetClassName, nestedClassName)
-                } else {
-                    // Fallback to Any if reference can't be resolved
-                    ClassName("kotlin", "Any")
-                }
-            }
-            is JsonSchemaParser.PropertyType.Union -> mapUnionType(type, definitions, mainClassName)
-            is JsonSchemaParser.PropertyType.Enum -> String::class.asTypeName() // Enum values stored as strings by default
-        }
-        return if (nullable) baseType.copy(nullable = true) else baseType
+        return TypeMapperRegistry.mapType(
+            type = type,
+            nullable = nullable,
+            propertyName = propertyName,
+            parentClassName = parentClassName,
+            definitions = definitions,
+            mainClassName = mainClassName,
+            format = format,
+            formatMappers = formatMappers
+        )
     }
 
     fun mapArrayType(property: JsonSchemaParser.PropertyInfo, definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap(), mainClassName: String = ""): TypeName {
@@ -128,15 +86,6 @@ class KotlinTypeMapper(
         return LIST.parameterizedBy(itemType)
     }
 
-    private fun mapUnionType(union: JsonSchemaParser.PropertyType.Union, definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap(), mainClassName: String = ""): TypeName {
-        val nonNullTypes = union.types.filter { it !is JsonSchemaParser.PropertyType.Null }
-        val itemType = if (nonNullTypes.size == 1) {
-            mapType(nonNullTypes.first(), false, parentClassName = mainClassName, definitions = definitions, mainClassName = mainClassName, format = null)
-        } else {
-            ClassName("kotlin", "Any")
-        }
-        return LIST.parameterizedBy(itemType)
-    }
 
     private fun generateDefaultValue(type: TypeName, nullable: Boolean, required: Boolean = true): String? {
         return when {
