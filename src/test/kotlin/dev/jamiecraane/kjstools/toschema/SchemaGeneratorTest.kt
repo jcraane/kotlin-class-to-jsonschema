@@ -1,4 +1,4 @@
-package dev.jamiecraane.kotlinjsonschema.generator
+package dev.jamiecraane.kjstools.toschema
 
 import dev.jamiecraane.kjstools.generator.schema
 import dev.jamiecraane.kjstools.jsonschema.Description

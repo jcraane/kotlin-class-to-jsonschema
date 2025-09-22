@@ -1,9 +1,9 @@
 package dev.jamiecraane.kjstools.fromschema
 
 // No Spring dependencies; run as a plain CLI tool
-import java.io.File
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import mu.two.KotlinLogging
+import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -13,9 +13,15 @@ import java.nio.file.Paths
  */
 class SchemaToKotlinGenerator(
     private val schemaDirectory: String,
-    private val packageName: String = "com.ritense.valtimo.implementation.commutr.objects",
-    private val outputDirectory: String
+    private val packageName: String,
+    private val outputDirectory: String,
 ) {
+    init {
+        require(packageName.isBlank()) {
+            "Package name must be provided"
+        }
+    }
+
     private val logger = KotlinLogging.logger {}
     private val parser = JsonSchemaParser(File(schemaDirectory), jacksonObjectMapper())
     private val dataClassGenerator = DataClassGenerator()
@@ -25,14 +31,14 @@ class SchemaToKotlinGenerator(
         val className: String,
         val filePath: String,
         val success: Boolean,
-        val error: String? = null
+        val error: String? = null,
     )
 
     data class GenerationSummary(
         val totalSchemas: Int,
         val successfulGenerations: Int,
         val failedGenerations: Int,
-        val results: List<GenerationResult>
+        val results: List<GenerationResult>,
     ) {
         val success: Boolean get() = failedGenerations == 0
     }
@@ -142,20 +148,10 @@ class SchemaToKotlinGenerator(
             }
 
         } catch (e: Exception) {
-            logger.warn(e) { "Could not discover schemas from file system, trying known schemas" }
-            // Fallback to a predefined list of known schemas
-            schemaNames.addAll(getKnownSchemaNames())
+            logger.warn(e) { "Could not discover schemas from file system, trying known schemas in $schemaDirectory" }
         }
 
         return schemaNames.sorted()
-    }
-
-    private fun getKnownSchemaNames(): List<String> {
-        // Fallback list of known schemas based on your project structure
-        return listOf(
-            "aandachtspunt", "contactmoment", "inkomensprofiel", "inwonerplan",
-            "ontwikkelwens", "schuldenprofiel", "werkprofiel", "inwonerprofiel"
-        )
     }
 
     private fun cleanOutputDirectory(outputPath: Path) {

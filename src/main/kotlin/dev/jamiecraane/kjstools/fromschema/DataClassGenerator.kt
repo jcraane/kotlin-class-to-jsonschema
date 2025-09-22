@@ -2,21 +2,29 @@ package dev.jamiecraane.kjstools.fromschema
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.AnnotationSpec
+import com.squareup.kotlinpoet.FileSpec
+import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.KModifier
+import com.squareup.kotlinpoet.ParameterSpec
+import com.squareup.kotlinpoet.PropertySpec
+import com.squareup.kotlinpoet.TypeSpec
 
 /**
  * Generates Kotlin data classes using KotlinPoet from parsed JSON Schema information.
  */
 class DataClassGenerator(
-    private val typeMapper: KotlinTypeMapper = KotlinTypeMapper()
+    private val typeMapper: KotlinTypeMapper = KotlinTypeMapper(),
 ) {
 
     fun generateDataClass(
         parsedSchema: JsonSchemaParser.ParsedSchema,
         packageName: String,
-        schemaFileName: String? = null
+        schemaFileName: String? = null,
     ): FileSpec {
-        val mainClassName = typeMapper.sanitizeClassName(extractMainClassName(parsedSchema.id))
+        val mainClassName = typeMapper.sanitizeClassName(
+            name = extractMainClassName(parsedSchema)
+        )
 
         val fileBuilder = FileSpec.builder(packageName, mainClassName)
             .addFileComment("Generated from JSON Schema file: ${schemaFileName ?: "unknown"}.json")
@@ -45,7 +53,7 @@ class DataClassGenerator(
 
     private fun generateMainDataClass(
         className: String,
-        parsedSchema: JsonSchemaParser.ParsedSchema
+        parsedSchema: JsonSchemaParser.ParsedSchema,
     ): TypeSpec {
         val classBuilder = TypeSpec.classBuilder(className)
             .addModifiers(KModifier.DATA)
@@ -66,7 +74,8 @@ class DataClassGenerator(
         parsedSchema.rootProperties.forEach { (_, property) ->
             val kotlinProperty = when (property.type) {
                 is JsonSchemaParser.PropertyType.Array -> {
-                    val mappedProperty = typeMapper.mapProperty(property, className, parsedSchema.definitions, className)
+                    val mappedProperty =
+                        typeMapper.mapProperty(property, className, parsedSchema.definitions, className)
                     val arrayType = typeMapper.mapArrayType(property, parsedSchema.definitions, className)
                     // If the default value is null, make the array type nullable
                     val finalArrayType = if (mappedProperty.defaultValue == "null") {
@@ -76,6 +85,7 @@ class DataClassGenerator(
                     }
                     mappedProperty.copy(type = finalArrayType)
                 }
+
                 else -> typeMapper.mapProperty(property, className, parsedSchema.definitions, className)
             }
 
@@ -85,7 +95,8 @@ class DataClassGenerator(
         // Add nested classes for nested objects
         parsedSchema.rootProperties.values.forEach { property ->
             if (property.type is JsonSchemaParser.PropertyType.NestedObject) {
-                val baseNestedClassName = typeMapper.sanitizeClassName(property.name).replaceFirstChar { it.uppercase() }
+                val baseNestedClassName =
+                    typeMapper.sanitizeClassName(property.name).replaceFirstChar { it.uppercase() }
                 val nestedClassName = if (baseNestedClassName == className) {
                     "${baseNestedClassName}Child"
                 } else {
@@ -100,7 +111,8 @@ class DataClassGenerator(
         // Only generate classes for complex objects with properties, not simple type definitions
         parsedSchema.definitions.forEach { (defName, definition) ->
             if (definition.properties.isNotEmpty()) {
-                val definitionClass = generateDefinitionAsNestedClass(defName, definition, parsedSchema.definitions, className)
+                val definitionClass =
+                    generateDefinitionAsNestedClass(defName, definition, parsedSchema.definitions, className)
                 classBuilder.addType(definitionClass)
             }
         }
@@ -112,7 +124,7 @@ class DataClassGenerator(
         definitionName: String,
         definition: JsonSchemaParser.DefinitionInfo,
         definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap(),
-        mainClassName: String = ""
+        mainClassName: String = "",
     ): TypeSpec {
         val baseClassName = typeMapper.sanitizeClassName(definitionName).replaceFirstChar { it.uppercase() }
         val className = if (baseClassName == mainClassName) {
@@ -149,6 +161,7 @@ class DataClassGenerator(
                     }
                     mappedProperty.copy(type = finalArrayType)
                 }
+
                 else -> typeMapper.mapProperty(property, className, definitions, mainClassName)
             }
 
@@ -158,7 +171,8 @@ class DataClassGenerator(
         // Add nested classes for nested objects within this definition
         definition.properties.values.forEach { property ->
             if (property.type is JsonSchemaParser.PropertyType.NestedObject) {
-                val baseNestedClassName = typeMapper.sanitizeClassName(property.name).replaceFirstChar { it.uppercase() }
+                val baseNestedClassName =
+                    typeMapper.sanitizeClassName(property.name).replaceFirstChar { it.uppercase() }
                 val nestedClassName = if (baseNestedClassName == className) {
                     "${baseNestedClassName}Child"
                 } else {
@@ -175,7 +189,7 @@ class DataClassGenerator(
     private fun generateDefinitionClass(
         definitionName: String,
         definition: JsonSchemaParser.DefinitionInfo,
-        definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap()
+        definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap(),
     ): TypeSpec {
         val className = typeMapper.sanitizeClassName(definitionName).replaceFirstChar { it.uppercase() }
         val classBuilder = TypeSpec.classBuilder(className)
@@ -207,6 +221,7 @@ class DataClassGenerator(
                     }
                     mappedProperty.copy(type = finalArrayType)
                 }
+
                 else -> typeMapper.mapProperty(property, className, definitions, "")
             }
 
@@ -220,7 +235,7 @@ class DataClassGenerator(
         definitionName: String,
         definition: JsonSchemaParser.DefinitionInfo,
         parentClassName: String,
-        definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap()
+        definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap(),
     ): TypeSpec {
         val className = typeMapper.sanitizeClassName(definitionName)
         val classBuilder = TypeSpec.classBuilder(className)
@@ -252,6 +267,7 @@ class DataClassGenerator(
                     }
                     mappedProperty.copy(type = finalArrayType)
                 }
+
                 else -> typeMapper.mapProperty(property, parentClassName, definitions, "")
             }
 
@@ -264,7 +280,7 @@ class DataClassGenerator(
     private fun addPropertyToClass(
         classBuilder: TypeSpec.Builder,
         constructorBuilder: FunSpec.Builder,
-        kotlinProperty: KotlinTypeMapper.KotlinPropertyInfo
+        kotlinProperty: KotlinTypeMapper.KotlinPropertyInfo,
     ) {
         // Add constructor parameter
         val parameterBuilder = ParameterSpec.builder(kotlinProperty.name, kotlinProperty.type)
@@ -293,12 +309,19 @@ class DataClassGenerator(
         classBuilder.addProperty(propertyBuilder.build())
     }
 
-    private fun generateNestedObjectClasses(parsedSchema: JsonSchemaParser.ParsedSchema, mainClassName: String): List<TypeSpec> {
+    private fun generateNestedObjectClasses(
+        parsedSchema: JsonSchemaParser.ParsedSchema,
+        mainClassName: String,
+    ): List<TypeSpec> {
         // We'll now add nested classes directly to the main class instead of as separate top-level classes
         return emptyList()
     }
 
-    private fun generateNestedObjectClass(className: String, nestedObject: JsonSchemaParser.PropertyType.NestedObject, definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap()): TypeSpec {
+    private fun generateNestedObjectClass(
+        className: String,
+        nestedObject: JsonSchemaParser.PropertyType.NestedObject,
+        definitions: Map<String, JsonSchemaParser.DefinitionInfo> = emptyMap(),
+    ): TypeSpec {
         val classBuilder = TypeSpec.classBuilder(className)
             .addModifiers(KModifier.DATA)
             .addAnnotation(
@@ -370,11 +393,13 @@ class DataClassGenerator(
             }
     }
 
-    private fun extractMainClassName(schemaId: String): String {
-        // Extract class name from schema ID like "https://schema.utrecht.nl/commutr/aandachtspunt"
-        return schemaId.substringAfterLast("/").ifEmpty {
-            schemaId.substringAfterLast("#").ifEmpty { "GeneratedClass" }
-        }
+    private fun extractMainClassName(parsedSchema: JsonSchemaParser.ParsedSchema): String {
+        return (parsedSchema.title ?: extractClassNameFromSchemaId(parsedSchema.id))
+            .replaceFirstChar(Char::uppercaseChar)
+    }
+
+    private fun extractClassNameFromSchemaId(schemaId: String): String = schemaId.substringAfterLast("/").ifEmpty {
+        schemaId.substringAfterLast("#").ifEmpty { "GeneratedClass" }
     }
 }
 
