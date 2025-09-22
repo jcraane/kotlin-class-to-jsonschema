@@ -1,4 +1,4 @@
-package dev.jamiecraane.kjstools.fromschema
+package dev.jamiecraane.kjstools.fromschema.parsing
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.Test
@@ -170,5 +170,24 @@ class JsonSchemaParserTest {
         assertEquals("Course date and time", datetime.description)
         assertEquals("date-time", datetime.format)
         assertTrue(datetime.required)
+    }
+
+    @Test
+    fun `test parsing invalid JSON schema throws exception`() {
+        val testResourcesDir = File("src/test/resources")
+        val objectMapper = ObjectMapper()
+        val parser = JsonSchemaParser(testResourcesDir, objectMapper)
+
+        try {
+            parser.parseSchema("invalid-schema")
+            assertTrue(false, "Expected exception when parsing invalid JSON schema")
+        } catch (e: Exception) {
+            // Document what type of exception is thrown
+            println("[DEBUG_LOG] Exception type: ${e.javaClass.simpleName}")
+            println("[DEBUG_LOG] Exception message: ${e.message}")
+
+            // The test passes if any exception is thrown when parsing invalid JSON
+            assertTrue(true, "Exception was correctly thrown for invalid JSON schema: ${e.message}")
+        }
     }
 }

@@ -1,10 +1,11 @@
-package dev.jamiecraane.kjstools.fromschema
+package dev.jamiecraane.kjstools.fromschema.generation
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.Test
 import java.io.File
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import dev.jamiecraane.kjstools.fromschema.parsing.JsonSchemaParser
 
 class DataClassGeneratorTest {
 

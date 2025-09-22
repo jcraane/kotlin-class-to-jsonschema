@@ -1,4 +1,4 @@
-package dev.jamiecraane.kjstools.fromschema
+package dev.jamiecraane.kjstools.fromschema.generation
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
@@ -9,6 +9,9 @@ import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
+import dev.jamiecraane.kjstools.fromschema.parsing.JsonSchemaParser
+import dev.jamiecraane.kjstools.fromschema.mapping.KotlinTypeMapper
+import dev.jamiecraane.kjstools.fromschema.model.FormatEnum
 
 /**
  * Generates Kotlin data classes using KotlinPoet from parsed JSON Schema information.

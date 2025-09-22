@@ -1,4 +1,4 @@
-package dev.jamiecraane.kjstools.fromschema
+package dev.jamiecraane.kjstools.fromschema.model
 
 @Target(AnnotationTarget.PROPERTY, AnnotationTarget.FIELD)
 @Retention(AnnotationRetention.RUNTIME)

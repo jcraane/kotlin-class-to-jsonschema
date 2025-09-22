@@ -1,8 +1,10 @@
-package dev.jamiecraane.kjstools.fromschema
+package dev.jamiecraane.kjstools.fromschema.mapping
 
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import java.math.BigDecimal
+import dev.jamiecraane.kjstools.fromschema.parsing.JsonSchemaParser
+import dev.jamiecraane.kjstools.fromschema.model.FormatEnum
 
 /**
  * Maps JSON Schema types to Kotlin types for code generation.

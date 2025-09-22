@@ -2,6 +2,9 @@ package dev.jamiecraane.kjstools.fromschema
 
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import dev.jamiecraane.kjstools.fromschema.mapping.KotlinTypeMapper
+import dev.jamiecraane.kjstools.fromschema.model.FormatEnum
+import dev.jamiecraane.kjstools.fromschema.parsing.JsonSchemaParser
 import org.junit.Test
 import java.math.BigDecimal
 import kotlin.test.assertEquals

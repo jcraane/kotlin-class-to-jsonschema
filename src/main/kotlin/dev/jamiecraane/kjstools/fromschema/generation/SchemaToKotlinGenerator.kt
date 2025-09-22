@@ -1,4 +1,4 @@
-package dev.jamiecraane.kjstools.fromschema
+package dev.jamiecraane.kjstools.fromschema.generation
 
 // No Spring dependencies; run as a plain CLI tool
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -7,6 +7,7 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import dev.jamiecraane.kjstools.fromschema.parsing.JsonSchemaParser
 
 /**
  * Main orchestrator for generating Kotlin data classes from JSON Schema files.

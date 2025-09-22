@@ -1,4 +1,4 @@
-package dev.jamiecraane.kjstools.fromschema
+package dev.jamiecraane.kjstools.fromschema.parsing
 
 import com.fasterxml.jackson.databind.JsonNode
 

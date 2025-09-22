@@ -1,6 +1,8 @@
-package dev.jamiecraane.kjstools.fromschema
+package dev.jamiecraane.kjstools.fromschema.generation
 
 import com.squareup.kotlinpoet.TypeSpec
+import dev.jamiecraane.kjstools.fromschema.parsing.JsonSchemaParser
+import dev.jamiecraane.kjstools.fromschema.mapping.KotlinTypeMapper
 
 /**
  * Generates Kotlin enum classes from JSON Schema enum definitions.
