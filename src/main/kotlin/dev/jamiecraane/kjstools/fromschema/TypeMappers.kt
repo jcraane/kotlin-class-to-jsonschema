@@ -98,11 +98,7 @@ object ReferenceTypeMapper : TypeMapper() {
                 if (referencedDefinition != null) {
                     val targetClassName = if (mainClassName.isNotEmpty()) mainClassName else parentClassName
                     val baseNestedClassName = KotlinTypeMapperUtil.sanitizeClassName(type.ref).replaceFirstChar { it.uppercase() }
-                    val nestedClassName = if (baseNestedClassName == targetClassName.substringAfterLast('.')) {
-                        "${baseNestedClassName}Child"
-                    } else {
-                        baseNestedClassName
-                    }
+                    val nestedClassName = KotlinTypeMapperUtil.resolveClassNameConflict(baseNestedClassName, targetClassName)
                     ClassName(targetClassName, nestedClassName)
                 } else {
                     ClassName("kotlin", "Any")
@@ -132,11 +128,7 @@ object NestedObjectTypeMapper : TypeMapper() {
         formatMappers: Map<FormatEnum, String>
     ): TypeName {
         val baseNestedClassName = KotlinTypeMapperUtil.toPascalCase(propertyName).replaceFirstChar { it.uppercase() }
-        val nestedClassName = if (baseNestedClassName == parentClassName.substringAfterLast('.')) {
-            "${baseNestedClassName}Child"
-        } else {
-            baseNestedClassName
-        }
+        val nestedClassName = KotlinTypeMapperUtil.resolveClassNameConflict(baseNestedClassName, parentClassName)
         val baseType = ClassName(parentClassName, nestedClassName)
         return if (nullable) baseType.copy(nullable = true) else baseType
     }
@@ -272,6 +264,21 @@ object KotlinTypeMapperUtil {
             pascalCase.isEmpty() -> "GeneratedClass"
             !pascalCase.first().isLetter() -> "Class$pascalCase"
             else -> pascalCase
+        }
+    }
+
+    /**
+     * Resolves class name conflicts by appending "Child" when necessary
+     * @param baseClassName The base class name to check
+     * @param parentClassName The parent class name to compare against
+     * @return The resolved class name
+     */
+    fun resolveClassNameConflict(baseClassName: String, parentClassName: String): String {
+        val parentSimpleName = parentClassName.substringAfterLast('.')
+        return if (baseClassName == parentSimpleName) {
+            "${baseClassName}Child"
+        } else {
+            baseClassName
         }
     }
 

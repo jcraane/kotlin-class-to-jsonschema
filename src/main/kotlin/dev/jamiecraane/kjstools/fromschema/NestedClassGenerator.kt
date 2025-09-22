@@ -23,11 +23,7 @@ class NestedClassGenerator(
         mainClassName: String = "",
     ): TypeSpec {
         val baseClassName = typeMapper.sanitizeClassName(definitionName).replaceFirstChar { it.uppercase() }
-        val className = if (baseClassName == mainClassName) {
-            "${baseClassName}Child"
-        } else {
-            baseClassName
-        }
+        val className = KotlinTypeMapperUtil.resolveClassNameConflict(baseClassName, mainClassName)
 
         return generateClassWithProperties(
             className = className,
@@ -135,11 +131,7 @@ class NestedClassGenerator(
                 if (property.type is JsonSchemaParser.PropertyType.NestedObject) {
                     val baseNestedClassName =
                         typeMapper.sanitizeClassName(property.name).replaceFirstChar { it.uppercase() }
-                    val nestedClassName = if (baseNestedClassName == className) {
-                        "${baseNestedClassName}Child"
-                    } else {
-                        baseNestedClassName
-                    }
+                    val nestedClassName = KotlinTypeMapperUtil.resolveClassNameConflict(baseNestedClassName, className)
                     val nestedClass = generateNestedObjectClass(nestedClassName, property.type, definitions)
                     classBuilder.addType(nestedClass)
                 }
